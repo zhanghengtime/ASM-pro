@@ -1,0 +1,74 @@
+DATA SEGMENT
+	COL DW 0  ;列的起始坐标
+	ROW DW 0  ;行的起始坐标
+	LENGTH DW 319 ;线长
+	COLOR DB 1 ;颜色
+	TIP DB 'please input number: $'  ;提示
+	NUM DW ?
+	NUMS DW ?
+DATA ENDS
+
+STACK1 SEGMENT STACK
+	DW 20 DUP(0)
+STACK1 ENDS
+
+CODE SEGMENT
+	ASSUME CS:CODE,DS:DATA,SS:STACK1
+START:MOV AX,DATA
+	  MOV DS,AX
+	  MOV DX,OFFSET TIP  
+	  MOV AH,09H  ;输出提示
+	  INT 21H
+	  MOV AH,01H
+	  INT 21H
+	  SUB AL,30H
+	  XOR AH,AH
+	  MOV NUM,AX
+	  XOR AH,AH
+	  MOV DX,0
+	  MOV NUMS,AX
+	  MOV BX,NUMS
+	  MOV AX,200
+	  DIV BX   ;计算同种颜色的行数
+	  MOV NUMS,AX
+	  MOV AX,200
+	  MOV AH,0   ;设置显示方式
+	  MOV AL,0DH
+	  INT 10H
+	  MOV DI,NUM
+L3:	  MOV CX,NUMS
+LOP:  PUSH CX
+	  MOV DX,ROW  ;画横线
+	  MOV CX,COL
+	  CALL PROC_X
+	  INC ROW
+	  POP CX
+	  LOOP LOP
+	  DEC DI
+	  MOV BX,0FFFFH  
+NEXT: DEC BX
+      JNE NEXT
+	  INC COLOR
+	  JNE L3
+	  MOV AH,1   ;输入
+	  INT 21H
+	  MOV AH,0
+	  INT 21H
+	  MOV AH,4CH  ;结束
+	  INT 21H
+	  
+PROC_X PROC    ;画横线子程序
+	 MOV SI,LENGTH   ;线长
+LOP1:MOV BH,0       ;置页号
+	 INC CX         ;修改列号 
+	 MOV AL,COLOR   ;取像素值
+	 MOV AH,0CH     ;写像素
+	 INT 10H
+	 DEC SI
+	 JNE LOP1
+	 RET
+PROC_X ENDP
+	  
+CODE ENDS
+	END START
+      

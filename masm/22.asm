@@ -1,0 +1,247 @@
+DATA SEGMENT
+    NUM1 DB 20H DUP(?)
+	NUM11 DB 'please input the first number: $'
+	NUM1L DB 0   ;数1的长度
+	NUM22 DB 'please input the second number: $'
+	NUM2 DB 20H DUP(?)
+	NUM2L DB 0   ;数2的长度
+	OUTPUT DB 'the output is: $' 
+	CHOICE DB 'please input your choice: $'
+DATA ENDS
+
+STACK1 SEGMENT PARA STACK
+	DW 20H DUP(0)
+STACK1 ENDS
+
+CODE SEGMENT 
+	ASSUME CS:CODE,DS:DATA,SS:STACK1
+START:  MOV AX,DATA
+		MOV DS,AX
+		MOV DX,OFFSET NUM11 ;输出第一个提示
+		MOV AH,09H
+		INT 21H
+	    MOV SI,OFFSET NUM1
+		CALL PROC_INPUT1    ;输入第一个数
+     	DEC SI
+		MOV DL,0DH      ;换行
+		MOV AH,02H
+		INT 21H
+		MOV DL,0AH
+		MOV AH,02H
+		INT 21H
+		MOV DX,OFFSET NUM22 ;输出第二个提示
+		MOV AH,09H
+		INT 21H
+	    MOV DI,OFFSET NUM2
+		CALL PROC_INPUT2 	;输入第二个数	 
+		DEC DI
+		MOV DL,0DH       ;换行
+		MOV AH,02H
+		INT 21H
+		MOV DL,0AH
+		MOV AH,02H
+		INT 21H
+		MOV DX,OFFSET CHOICE  ;输出第三个提示
+		MOV AH,09H
+		INT 21H
+		MOV AH,01H    ;输入选择
+		INT 21H
+		CMP AL,2BH
+		JLE LADD
+		CMP AL,2DH
+		JGE LSUB
+		JMP NEXT
+LADD:	MOV DL,0DH       ;执行加法操作
+		MOV AH,02H
+		INT 21H
+		MOV DL,0AH        ;换行
+		MOV AH,02H
+		INT 21H
+		MOV DL,0DH
+		MOV AH,02H
+		INT 21H
+		MOV DL,0AH
+		MOV AH,02H
+		INT 21H
+		MOV DX,OFFSET output  ;输出第四个提示
+		MOV AH,09H
+		INT 21H
+        CALL PROC_PRITEADD   ;输出加法的结果
+		JMP NEXT
+LSUB:	MOV DL,0DH       ;执行减法操作
+		MOV AH,02H
+		INT 21H
+		MOV DL,0AH       ;换行
+		MOV AH,02H
+		INT 21H
+		MOV DL,0DH
+		MOV AH,02H
+		INT 21H
+		MOV DL,0AH
+		MOV AH,02H
+		INT 21H
+		MOV DX,OFFSET output  ;输出第四个提示
+		MOV AH,09H
+		INT 21H 
+        CALL PROC_PRITESUB  ;输出减法的结果
+NEXT:   MOV AH,4CH
+		INT 21H	
+PROC_INPUT1 PROC    ;输入第一个数子程序
+	MOV CX,1
+INPUT1: MOV CL,4
+        MOV AH,01H
+		INT 21H
+		CMP AL,39H   ;输入不在0-9之间退出
+		JG RE1
+		CMP AL,30H
+		JL RE1
+		SUB AL,30H
+		SHL AL,CL
+		XOR BL,BL
+		MOV BL,AL
+		MOV AH,01H
+		INT 21H
+		SUB AL,30H
+		ADD BL,AL
+		MOV [SI],BL
+	    INC SI
+		INC NUM1L    ;长度加一
+		LOOP INPUT1
+RE1:	RET
+PROC_INPUT1 ENDP
+
+PROC_INPUT2 PROC       ;输入第二个数子程序
+	MOV CX,1
+INPUT2: MOV CL,4
+        MOV AH,01H
+		INT 21H
+		CMP AL,39H     ;输入不在0-9之间退出
+		JG RE2
+		CMP AL,30H
+		JL RE2
+		SUB AL,30H
+		SHL AL,CL
+		MOV BL,AL
+		MOV AH,01H
+		INT 21H
+		SUB AL,30H
+		ADD BL,AL
+		MOV [DI],BL
+		INC DI
+		INC NUM2L      ;长度加一
+		LOOP INPUT2
+RE2:	RET	
+PROC_INPUT2 ENDP
+
+PROC_PRITEADD PROC     ;加法子程序
+       	MOV AH,NUM1L
+		MOV AL,NUM2L
+		CMP AH,AL    ;比较两个数的长度
+		JGE CHA      ;数num1长否
+		XCHG SI,DI   ;交换首地址
+		XCHG AH,AL   ;交换长度
+		MOV NUM1L,AH
+		MOV NUM2L,AL
+CHA:    SUB AH,AL
+        MOV BL,AH
+		MOV CL,AL    ;相同长度数存在cl
+		CLC          ;cf标志位送0  
+LOP1:   MOV AL,[DI]  ;循环lop1为同长度部分相加 
+		ADC [SI],AL
+		DEC SI
+		DEC DI
+		LOOP LOP1
+		MOV CL,BL    ;两数长度之差送cl
+		JCXZ LLL     ;若两数长度相同，结束 
+LOP2:   ADC BYTE PTR [SI],0  ;循环lop2处理剩余的字节
+		DEC SI
+		LOOP LOP2
+LLL:    MOV CL,NUM1L	
+LOP3:   PUSH CX
+        INC SI
+        MOV BL,[SI]
+		MOV DL,[SI]
+		MOV CL,4
+		SHR DL,CL
+		CMP DL,09H   ;按16进制输出
+		JG LA
+		ADD DL,30H
+		MOV AH,02H
+		INT 21H
+		JMP LB
+LA:		ADD DL,37H
+        MOV AH,02H
+		INT 21H
+LB:		MOV DL,BL
+		AND DL,0FH
+		CMP DL,09H
+		JG LAA
+		ADD DL,30H
+		MOV AH,02H
+		INT 21H
+		JMP LBB
+LAA:	ADD DL,37H
+        MOV AH,02H
+		INT 21H
+LBB:	POP CX
+	    LOOP LOP3
+        RET	
+PROC_PRITEADD ENDP	
+
+PROC_PRITESUB PROC    ;减法子程序
+       	MOV AH,NUM1L
+		MOV AL,NUM2L
+		CMP AH,AL    ;比较两个数的长度
+		JGE CHA2      ;数num1长否
+		XCHG SI,DI   ;交换首地址
+		XCHG AH,AL   ;交换长度
+		MOV NUM1L,AH
+		MOV NUM2L,AL
+CHA2:   SUB AH,AL
+        MOV BL,AH
+		MOV CL,AL    ;相同长度数存在cl
+		CLC          ;cf标志位送0  
+LOP12:  MOV AL,[DI]  ;循环lop1为同长度部分相减 
+		SBB [SI],AL
+		DEC SI
+		DEC DI
+		LOOP LOP12
+		MOV CL,BL    ;两数长度之差送cl
+		JCXZ LLL2     ;若两数长度相同，结束 
+LOP22:  SBB BYTE PTR [SI],0  ;循环lop2处理剩余的字节
+		DEC SI
+		LOOP LOP22
+LLL2:   MOV CL,NUM1L	
+LOP32:  PUSH CX
+        INC SI
+        MOV BL,[SI]
+		MOV DL,[SI]
+		MOV CL,4
+		SHR DL,CL
+		CMP DL,09H     ;按16进制输出
+		JG LA2
+		ADD DL,30H
+		MOV AH,02H
+		INT 21H
+		JMP LB2
+LA2:	ADD DL,37H
+        MOV AH,02H
+		INT 21H
+LB2:	MOV DL,BL
+		AND DL,0FH
+		CMP DL,09H
+		JG LAA2
+		ADD DL,30H
+		MOV AH,02H
+		INT 21H
+		JMP LBB2
+LAA2:	ADD DL,37H
+        MOV AH,02H
+		INT 21
+LBB2:	POP CX
+	    LOOP LOP32
+        RET	
+PROC_PRITESUB ENDP	
+
+CODE ENDS
+		END START
